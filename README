@@ -1,0 +1,139 @@
+hotmix is a rough and very preliminary implementation of the cancer
+progression algorithm described in this paper:
+
+@incollection{NIPS2011_0130,
+ title ={A Global Structural EM Algorithm for a Model of Cancer Progression},
+ author={Ali Tofigh and Erik Sjolund and Mattias Hoglund and Jens Lagergren},
+ booktitle = {Advances in Neural Information Processing Systems 24},
+ editor = {J. Shawe-Taylor and R.S. Zemel and P. Bartlett and F.C.N. Pereira and K.Q. Weinberger},
+ pages = {163--171},
+ year = {2011},
+ url = {http://books.nips.cc/nips24.html#P0130}
+}
+
+
+This document gives a brief overview of how to use the programs in the
+hotmix package as well as a description of the file formats used.
+
+
+gen-rand-hot
+============
+
+This tool is used to generate hidden-variable oncogenetic trees
+(HOTs). The trees are written using standard newick notation, except
+that each vertex in the tree has a comment that describes the HOT
+parameters associated with that vertex and the incoming edge.
+
+For each vertex, all eight probabilities are written within brackets
+('[' and ']') starting with the string "&&". Here is an example of a
+HOT:
+
+(1[&&0.5364 0.2287 0.4636 0.7713 0.7415 0.04676 0.2585 0.9532], 2[&&0.6404 0.3295 0.3596 0.6705 0.7348 0.4793 0.2652 0.5207])0[&&0 0.0782 0 0.9218 0.9042 0.0269 0.09582 0.9731];
+
+Without the HOT parameters, the tree can be written:
+
+(1, 2)0;
+
+Note that each vertex label must be an integer. If there are n vertices,
+then the vertices must be labeled 0..n-1. It is easiest to let the root
+have label 0.
+
+The strings within '[&&' and ']" contain the eight (redundant)
+parameters associated with the vertex and the incoming edge. The numbers
+have the following meaning in the order given:
+
+[&& Pr[Z(u)=0|Z(p(u))=0] Pr[Z(u)=0|Z(p(u))=1] Pr[Z(u)=1|Z(p(u))=0] Pr[Z(u)=1|Z(p(u))=1] Pr[X(u)=0|Z(u)=0] Pr[X(u)=0|Z(u)=1] Pr[X(u)=1|Z(u)=0] Pr[X(u)=1|Z(u)=1]]
+
+p(u) refers to the parent of u. For an explanation of Z (the hidden
+variables associated with vertices) and X (the visible variables
+associated with the vertices), please see the article describing HOTs.
+
+You can use gen-rand-hot to create HOTs with randomly assigned tree
+structures (drawn uniformly from all possible structures of a certain
+size) and parameters (drawn uniformly from given ranges). The range from
+which the parameters are randomly drawn can be specified using
+flags. Use the --help flag to see all availabe options. As an example,
+the following
+
+$ ./gen-rand-hot --p-z1-zp0=0.05,0.2 3 0
+
+will give you a HOT with 3 vertices (including the root), where the root
+is labeled 0 and the parameter Pr[Z(u)=1|Z(p(u))=0] is drawn uniformly
+from [0.05, 0.2].
+
+
+parent
+======
+
+parent is a utlity for quickly examining the structure of a HOT. It
+simply prints each edge of the tree. For example, for a HOT with the
+following tree structure:
+
+((1, 2)3, 4)0;
+
+the parent command produces the following outpue:
+
+$ ./parent treefile
+  1  2  3  4
+  3  3  0  0
+
+Each column corresponds to an edge and it can be read as "parent of 1 is
+3, parent of 2 is 3, parent of 3 is 0, parent of 4 is 0". It is possible
+to change the orientation to see one edge per line instead. Use the
+--help flag for options.
+
+
+gen-data
+========
+
+gen-data is used to generate data from HOTs. Input to gen-data is a HOT
+mixture, which is simply a probability distribution on a set of
+HOTs. Use the --help flag to get help on available options. Here is an
+example. Assuming we have two HOTs in files treefile1 and treefile2
+(both with the same number of vertics), and a file called mixfile that
+describes the mixture probabilities:
+
+---------- mixfile ----------
+treefile1 0.7
+treefile2 0.3
+-----------------------------
+
+we can use gen-data to generate 20 datapoints as follows:
+
+$ ./gen-data mixfile 20 > datafile
+
+Each row in a datafile corresponds to one datapoint and consists of n
+zeros and ones, where n is the number of vertices in the HOTs.
+
+
+hotmix
+======
+
+This is the main program in the package. Given a data file and and
+integer k, hotmix will run the EM-algorithm as described in the
+article to produce a mixture of k HOTs. This program has quite a few
+options; use the --help flag for more info.
+
+A suggestion for obtaining good results is to run hotmix for a few
+iterations on many different random start HOTs and also the 'starz' HOT
+(with --start-tree=starz), and then to take the one with the best
+likelihood and continue until convergence. The author's experience is
+that using global parameters option (by giving the flag
+--global-x-params) improves the results, potentially by decreasing the
+number of parameters that need to be estimated.
+
+Here is an example of running hotmix. Assume we have the data in a file
+called 'data'. We want to obtain a mixture of two HOTs and we want to
+start with one random HOT and one HOT that we ourselves provide in a
+file called 'starttree'. We also want to set an upper limit of 0.1 and
+0.2 on the parameters Pr[Z(u)=1|Z(p(u))=0] and Pr[X(u)=1|Z(u)=0],
+respectively.
+
+$ ./hotmix --global-x-params --p-z1-zp0=0.1 --p-x1-z0=0.2 --start-tree=random --start-tree=starttree data 2
+
+
+likelihood
+==========
+
+Given a HOT mixture and data, this utility computes the likelihood,
+i.e., the probability of the data given the mixture.

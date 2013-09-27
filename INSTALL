@@ -1,0 +1,25 @@
+hotmix depends on the following libraries (versions that hotmix was
+tested with are given in parentheses):
+
+boost (1.34)
+gmp (4.2.3)
+mpfr (2.3.0)
+mpfrcpp (1.4.2)
+NHparser (0.9.0) (https://github.com/atofigh/NHparser)
+
+First you will need to obtain and install those libraries. Then edit the
+Makefile as needed (e.g., to set paths if the above libraries are
+installed in non-standard locations). Then do
+
+$ make
+
+This should produce the following binaries that you can copy anywhere
+you like:
+
+hotmix
+gen_rand_hot
+gen_data
+likelihood
+parent
+
+See the README file for brief information on usage.
